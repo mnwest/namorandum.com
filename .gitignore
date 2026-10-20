@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+# Keep local drafts and personal working notes out of the public repository.
+drafts/
+private/
+PROJECT_BRIEF.md
+*.log

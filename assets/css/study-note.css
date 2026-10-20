@@ -1,0 +1,45 @@
+/* Plain academic handout styling. The source exercises and equations remain unchanged. */
+.study-note { padding-block: .8rem 1.5rem; min-width: 0; overflow-wrap: anywhere; }
+.study-note .study-controls { display: flex; align-items: center; justify-content: space-between; gap: .7rem; flex-wrap: wrap; margin-block: .4rem .8rem; }
+.study-note .study-controls p { font-size: .85rem; color: var(--muted); margin: 0; }
+.study-note button { border: 1px solid var(--line); background: white; color: var(--accent); padding: .35rem .65rem; min-height: 40px; font-size: .9rem; }
+.study-note .math-status { border-left: 2px solid var(--accent); padding: .4rem .8rem; color: var(--muted); font-size: .9rem; }
+.study-note nav { display: flex; flex-wrap: wrap; gap: .2rem 1rem; padding-block: .6rem; border-block: 1px solid var(--line); margin-block: 1rem; }
+.study-note nav a { font-size: .9rem; padding-block: .2rem; }
+.study-note section { margin-block: 1.5rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+.study-note h2 { margin-bottom: .6rem; font-size: 1.3rem; }
+.study-note h3 { margin-block: 1rem .45rem; font-size: 1.05rem; }
+.study-note p { margin-block: .6rem; }
+.study-note .meta { font-size: .85rem; color: var(--muted); }
+.study-note .goal, .study-note .note, .study-note .quiz, .study-note .callout, .study-note .challenge { border-left: 2px solid #9aa7b1; padding: .5rem .8rem; background: #f7f8f9; margin-block: .8rem; }
+.study-note .equation { margin-block: .65rem; padding: .5rem .7rem; background: #f7f8f9; overflow-x: auto; max-width: 100%; }
+.study-note .flow { padding: .7rem; border-block: 1px solid var(--line); font-size: .95rem; }
+.study-note .card { margin-block: 1rem; padding: .7rem 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; }
+.study-note .card h3 { margin-top: 0; }
+.study-note .label { color: var(--accent); font-weight: 600; font-size: .9rem; }
+.study-note .tag { display: inline-block; font-size: .8rem; margin-left: .35rem; color: var(--muted); }
+.study-note details { margin-top: .6rem; border-top: 1px solid #e5e5e5; }
+.study-note details details { background: transparent; margin: .5rem 0 .1rem; }
+.study-note summary { cursor: pointer; padding: .45rem 0; color: var(--accent); font-size: .95rem; }
+.study-note summary:hover { text-decoration: underline; }
+.study-note .detail-body { padding: .1rem .5rem .6rem; border-top: 1px solid #eee; }
+.study-note .step { padding: .4rem .6rem; margin-block: .45rem; border-left: 2px solid #b7c2ca; background: #f8f9fa; overflow-x: auto; }
+.study-note .step strong { display: block; color: var(--accent); font-size: .9rem; }
+.study-note .tbl-wrap { overflow-x: auto; margin-block: .8rem; }
+.study-note table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 520px; }
+.study-note .tbl th, .study-note .tbl td { border: 1px solid var(--line); padding: .4rem .55rem; text-align: left; vertical-align: middle; }
+.study-note .tbl th { background: #f6f7f8; }
+.study-note mjx-container[display="true"] { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-block: .2rem; }
+.study-note .scratch { display: block; width: 100%; max-width: 100%; min-height: 70px; color: var(--ink); border: 1px solid #aaa; padding: .6rem; resize: vertical; background: white; }
+.study-note .scratch::placeholder { color: var(--muted); opacity: 1; }
+@media (max-width: 640px) {
+  .study-note { font-size: .95rem; }
+  .study-note h2 { font-size: 1.2rem; }
+  .study-note .detail-body { padding-inline: .4rem; }
+  .study-note .equation, .study-note .step { padding-inline: .45rem; }
+}
+@media print {
+  .study-note .no-print, .study-note nav, .study-note .math-status { display: none !important; }
+  .study-note section { margin-block: .8rem; }
+  .study-note .card { break-inside: auto; }
+}
