@@ -9,8 +9,12 @@
 .study-note section { margin-block: 1.5rem; padding-top: .8rem; border-top: 1px solid var(--line); }
 .study-note h2 { margin-bottom: .6rem; font-size: 1.3rem; }
 .study-note h3 { margin-block: 1rem .45rem; font-size: 1.05rem; }
+.study-note h4 { margin-block: .9rem .35rem; font-size: 1rem; color: var(--ink); }
+.study-note .goal .label { margin: 0 0 .2rem; }
+.study-note .goal ul { margin-block: .2rem; padding-left: 1.2rem; }
 .study-note p { margin-block: .6rem; }
 .study-note .meta { font-size: .85rem; color: var(--muted); }
+.study-note .eqno { margin-left: .3em; color: var(--muted); font-size: .85em; white-space: nowrap; }
 .study-note .goal, .study-note .note, .study-note .quiz, .study-note .callout, .study-note .challenge { border-left: 2px solid #9aa7b1; padding: .5rem .8rem; background: #f7f8f9; margin-block: .8rem; }
 .study-note .equation { margin-block: .65rem; padding: .5rem .7rem; background: #f7f8f9; overflow-x: auto; max-width: 100%; }
 .study-note .flow { padding: .7rem; border-block: 1px solid var(--line); font-size: .95rem; }
@@ -29,6 +33,9 @@
 .study-note table.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 520px; }
 .study-note .tbl th, .study-note .tbl td { border: 1px solid var(--line); padding: .4rem .55rem; text-align: left; vertical-align: middle; }
 .study-note .tbl th { background: #f6f7f8; }
+.study-note .tbl.summary :is(th, td):nth-child(-n+2) { white-space: nowrap; }
+.study-note .tbl ul { margin: 0; padding-left: 1.1rem; }
+.study-note .tbl li + li { margin-top: .15rem; }
 .study-note mjx-container[display="true"] { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-block: .2rem; }
 .study-note .scratch { display: block; width: 100%; max-width: 100%; min-height: 70px; color: var(--ink); border: 1px solid #aaa; padding: .6rem; resize: vertical; background: white; }
 .study-note .scratch::placeholder { color: var(--muted); opacity: 1; }

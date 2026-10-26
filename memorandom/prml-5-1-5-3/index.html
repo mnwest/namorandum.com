@@ -44,95 +44,118 @@
           <p class="note-meta"><span class="category">資料</span><span>PRML / 勉強会ノート</span></p>
           <h1>PRML 第5章<br>ネットワーク関数・訓練・誤差逆伝播</h1>
           <p>『Pattern Recognition and Machine Learning』第5章 5.1〜5.3</p>
-          <p class="article-context">作成日：<time datetime="2026-10-19">2026年10月19日</time> · 5.1〜5.3を22枚の演習カードで整理。</p>
         </header>
         <div class="study-note">
           <div class="study-controls no-print">
-            <p>入力欄はメモ用です。内容は保存・送信されません。</p>
-            <button id="close-all" type="button" hidden>すべての解答を閉じる</button>
+            <button id="close-all" type="button" hidden>開いた項目をすべて閉じる</button>
           </div>
           <p id="math-status" class="math-status" role="status" hidden></p>
           <noscript>
-            <p class="math-status">JavaScriptが無効のため、数式はTeX表記で表示しています。ヒントと解答は見出しを押すと開けます。</p>
+            <p class="math-status">JavaScriptが無効のため、数式はTeX表記で表示しています。</p>
           </noscript>
           <nav aria-label="目次" class="no-print">
-            <a href="#prep">前提</a>
-            <a href="#map">全体像</a>
+            <a href="#intro">はじめに</a>
             <a href="#s51">5.1 関数</a>
             <a href="#s52">5.2 訓練</a>
             <a href="#s53">5.3 逆伝播</a>
-            <a href="#practice">演習</a>
+            <a href="#example">計算例</a>
             <a href="#finish">まとめ</a>
           </nav>
-          <!-- ===================== 前提 ===================== -->
-          <section id="prep">
-            <h2>前提（1〜4章）</h2>
-            <h3>最尤推定と誤差関数</h3>
-            <p>データが独立なら尤度は各点の確率の積：</p>
-            <div class="equation">\[p(\mathbf T\mid X,\boldsymbol w)=\prod_{n=1}^{N}p(\boldsymbol t_n\mid\boldsymbol x_n,\boldsymbol w)\]</div>
-            <p>この負の対数を誤差関数 \(E(\boldsymbol w)\) として最小化する（最尤推定）。\(E\) はデータ点ごとの和 \(E=\sum_nE_n\) になる。</p>
-            <div class="tbl-wrap">
-              <table class="tbl">
-                <thead>
-                  <tr>
-                    <th>目標変数</th>
-                    <th>分布</th>
-                    <th>1点の確率</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>実数値</td>
-                    <td>ガウス（精度 \(\beta\)）</td>
-                    <td>\(\sqrt{\tfrac{\beta}{2\pi}}\exp\bigl(-\tfrac\beta2(t-y)^2\bigr)\)</td>
-                  </tr>
-                  <tr>
-                    <td>\(t\in\{0,1\}\)</td>
-                    <td>ベルヌーイ</td>
-                    <td>\(y^{t}(1-y)^{1-t}\)</td>
-                  </tr>
-                  <tr>
-                    <td>\(K\) クラス</td>
-                    <td>カテゴリカル</td>
-                    <td>\(\prod_{k}y_k^{t_k}\)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p>クラスは <strong>1-of-\(K\) 符号化</strong>：正解成分だけ1（\(K=3\)、クラス2 → \((0,1,0)^\top\)）。</p>
-            <h3>基底関数モデル（3章）</h3>
-            <div class="equation">\[y(\boldsymbol x,\boldsymbol w)=\sum_{j=0}^{M-1}w_j\phi_j(\boldsymbol x)=\boldsymbol w^\top\boldsymbol\phi(\boldsymbol x)\qquad(\phi_0=1)\]</div>
+          <!-- ===================== はじめに ===================== -->
+          <section id="intro">
+            <h2>はじめに：5章は何をする章か</h2>
+            <h3>背景：なぜニューラルネットワークか</h3>
             <ul>
-              <li>\(\boldsymbol w\) について線形。ガウス雑音なら二乗和誤差（凸な二次関数）で、解は閉じた形。</li>
-              <li>正則化項 \(\frac\lambda2\boldsymbol w^\top\boldsymbol w\) で過学習を抑える。</li>
-              <li>基底が固定なので、入力が高次元だと必要数が急増する（次元の呪い）。5章は<strong>基底自体を学習</strong>して対処する。代償として \(E\) は非凸になり、閉じた形で解けない。</li>
+              <li><strong>3・4章のモデル：</strong>固定した基底 \(\phi_j(\boldsymbol x)\) の線形結合
+                <ul>
+                  <li>解析的に扱いやすい</li>
+                  <li>入力が高次元だと基底の数が爆発（次元の呪い）</li>
+                  <li>→ 基底をデータに適応させたい</li>
+                </ul>
+              </li>
+              <li><strong>基底を変える方法は2つ</strong>
+                <ul>
+                  <li>SVM・RVM（7章）：訓練データ点を中心とする基底を大量に用意し、一部を選ぶ、凸で解きやすいが、基底数がデータ数とともに増えがち</li>
+                  <li>ニューラルネットワーク（5章）：基底の数は固定し、形を学習、SVMと比べコンパクトなモデルになるが、学習は非凸</li>
+                </ul>
+              </li>
+              <li><strong>本章の対象：</strong>NNの中でも実用上もっとも成功している多層パーセプトロン（MLP）。現在の深層学習でも基本となる形</li>
+              <li><strong>MLPの中身：</strong>パーセプトロン（不連続）ではなく、ロジスティック回帰（連続）を多層に重ねたもの
+                <ul>
+                  <li>パーセプトロン（Rosenblatt, 1962）はステップ関数で微分できず、多層にしても重みを学習する方法がなかった</li>
+                  <li>活性化関数を連続にすれば、誤差逆伝播（Rumelhart et al., 1986）で多層の勾配を効率よく計算でき、学習できる（5.3）</li>
+                </ul>
+              </li>
             </ul>
-            <h3>線形分類（4章）</h3>
-            <p>\(y=f(\boldsymbol w^\top\boldsymbol\phi)\) の \(f\) でモデルが決まる。</p>
+            <h3>5.1〜5.3の流れ</h3>
+            <div class="flow">5.1 どんな関数か　→　5.2 何を最小化し、どう探すか　→　5.3 勾配をどう速く計算するか</div>
             <ul>
-              <li><strong>パーセプトロン：</strong>\(f\) はステップ関数。不連続なので勾配法が使えない。</li>
-              <li><strong>ロジスティック回帰：</strong>\(f=\sigma\)、\(y=p(C_1\mid\boldsymbol x)\)。\(a=\boldsymbol w^\top\boldsymbol\phi\) は対数オッズ \(\ln\frac{p(C_1\mid\boldsymbol x)}{p(C_2\mid\boldsymbol x)}\)。</li>
-              <li><strong>多クラス：</strong>\(a_k=\boldsymbol w_k^\top\boldsymbol\phi\) をソフトマックス \(y_k=e^{a_k}/\sum_je^{a_j}\) で確率にする。</li>
+              <li>この3節で「MLPを最尤推定で学習する」道具が揃う</li>
+              <li>5.4以降：ヘッセ行列、正則化、混合密度ネットワーク、ベイズニューラルネットワーク</li>
             </ul>
-            <p>誤差は交差エントロピー（ベルヌーイ／カテゴリカルの負の対数尤度）。凸だが閉じた解はなく、反復法（IRLS）で解く。勾配は線形回帰と同じ形：</p>
-            <div class="equation">\[\nabla E(\boldsymbol w)=\sum_{n=1}^{N}(y_n-t_n)\,\boldsymbol\phi_n\]</div>
-            <h3>正準連結関数（4.3.6）</h3>
-            <p>目標が指数型分布族に従い、出力関数 \(f\) を正準連結関数の逆関数に選ぶと、常に</p>
-            <div class="equation">\[\frac{\partial E_n}{\partial a}=y_n-t_n\]</div>
-            <p>対応：ガウス↔恒等写像、ベルヌーイ↔シグモイド、カテゴリカル↔ソフトマックス。5.3 では逆伝播の出発点 \(\delta_k\) になる。</p>
-            <h3>5章の位置づけ</h3>
-            <div class="flow">3・4章：固定した基底 \(\boldsymbol\phi(\boldsymbol x)\) の線形結合　→　5章：基底も学習する（隠れ層）</div>
-            <p>新たに必要なのは、非凸な誤差の反復最適化（5.2）と、多層の勾配の効率的な計算（5.3）。</p>
-          </section>
-          <section id="map">
-            <h2>全体像</h2>
-            <div class="flow">5.1 関数の定義　→　5.2 誤差関数と最適化　→　5.3 勾配の効率的計算</div>
-            <p>記号：入力 \(\boldsymbol{x}\)（\(D\) 次元）、隠れユニット数 \(M\)、出力数 \(K\)、目標 \(\boldsymbol{t}\)、出力 \(\boldsymbol{y}\)、全パラメータ \(\boldsymbol{w}\)（総数 \(W\)）、活性（重み付き和） \(a\)、ユニット出力 \(z\)、誤差信号 \(\delta\)。</p>
           </section>
           <!-- ===================== 5.1 ===================== -->
           <section id="s51">
             <h2>5.1 フィードフォワードネットワーク関数</h2>
-            <p>線形モデル \(y=f\bigl(\sum_j w_j\phi_j(\boldsymbol x)\bigr)\) の基底 \(\phi_j\) をパラメータ化して学習する。各層で「線形結合 → 非線形活性化」を繰り返す（多層パーセプトロン, MLP）。</p>
+            <div class="goal">
+              <p class="label">この節のねらい</p>
+              <ul>
+                <li><strong>目的：</strong>基底そのものを学習するモデルを定義する</li>
+                <li><strong>やること：</strong>基底を「線形結合 → 非線形変換」に置き換え、2層ネットワークを書く。表現力と対称性も見る</li>
+                <li><strong>わかること：</strong>NNは重みで形が決まる可微分な非線形関数。2層で万能近似できるが、重みの見つけ方は別問題（→5.2）</li>
+              </ul>
+            </div>
+            <h3>2層ネットワークの形</h3>
+            <ul>
+              <li><strong>アイデア：</strong>3・4章のモデルの基底 \(\phi_j\) も「入力の線形結合 → 非線形関数」にして学習する
+                <div class="equation">\[y(\boldsymbol x,\boldsymbol w)=f\Bigl(\sum_{j=1}^{M}w_j\phi_j(\boldsymbol x)\Bigr)\tag{5.1}\]</div>
+                <ul>
+                  <li>\(f\)：分類なら非線形関数、回帰なら恒等写像</li>
+                </ul>
+                <details class="level-1">
+                  <summary>おさらい：基底関数モデル（3章）</summary>
+                  <div class="detail-body">
+                    <div class="equation">\[y(\boldsymbol x,\boldsymbol w)=\sum_{j=0}^{M-1}w_j\phi_j(\boldsymbol x)=\boldsymbol w^\top\boldsymbol\phi(\boldsymbol x)\tag{3.3}\]</div>
+                    <ul>
+                      <li>\(\phi_j\)：固定した非線形関数（多項式、ガウス基底など）。\(\phi_0=1\) はバイアス</li>
+                      <li>\(\boldsymbol w\) について線形 → 二乗和誤差は凸、解は閉じた形</li>
+                      <li>弱点：基底が固定。入力が高次元だと基底の数が爆発</li>
+                      <li>4章の分類モデルは外側に \(f\) を付けた \(y=f(\boldsymbol w^\top\boldsymbol\phi(\boldsymbol x))\)<span class="eqno">(4.52)</span></li>
+                    </ul>
+                  </div>
+                </details>
+              </li>
+              <li><strong>順伝播</strong>（入力側から順に計算）
+                <ol>
+                  <li>第1層：\(a_j=\sum_{i=1}^{D}w_{ji}^{(1)}x_i+w_{j0}^{(1)}\)<span class="eqno">(5.2)</span>
+                    <ul>
+                      <li>\(x_i\)：入力（\(D\) 次元）、\(w_{ji}\)：重み、\(w_{j0}\)：バイアス、上付きの \((1)\)：第1層</li>
+                      <li>\(a_j\)：重み付き和。活性（activation）と呼ぶ</li>
+                    </ul>
+                  </li>
+                  <li>隠れユニット：\(z_j=h(a_j)\)<span class="eqno">(5.3)</span> ＝ 学習される基底（\(j=1,\dots,M\)）
+                    <ul>
+                      <li>\(h\)：活性化関数（シグモイド、\(\tanh\) など）</li>
+                    </ul>
+                  </li>
+                  <li>第2層：\(a_k=\sum_{j=1}^{M}w_{kj}^{(2)}z_j+w_{k0}^{(2)}\)<span class="eqno">(5.4)</span> → 出力活性化で出力 \(y_k\)（\(k=1,\dots,K\)）
+                    <ul>
+                      <li>回帰：恒等写像、2値分類：シグモイド \(y_k=\sigma(a_k)\)<span class="eqno">(5.5)</span>、多クラス：ソフトマックス（理由は5.2）</li>
+                    </ul>
+                  </li>
+                </ol>
+              </li>
+              <li><strong>まとめると</strong>（シグモイド出力）
+                <div class="equation">\[y_k(\boldsymbol x,\boldsymbol w)=\sigma\!\left(\sum_{j=1}^{M}w_{kj}^{(2)}\,h\!\left(\sum_{i=1}^{D}w_{ji}^{(1)}x_i+w_{j0}^{(1)}\right)+w_{k0}^{(2)}\right)\tag{5.7}\]</div>
+                <ul>
+                  <li>\(\boldsymbol w\)：全ての重み・バイアスを並べたベクトル（要素数 \(W\)）</li>
+                  <li>内側の \(h(\cdots)\)：データに合わせて変わる基底</li>
+                  <li>外側：4章の線形分類モデルそのもの</li>
+                  <li>「2層」＝重みの層の数（ユニットで数えて「3層」とする文献もある）</li>
+                  <li>ネットワーク図は8章のグラフィカルモデルとは別物（ノードは確率変数でなく決定的な値）</li>
+                </ul>
+              </li>
+            </ul>
             <figure style="margin:16px 0;text-align:center">
               <svg viewBox="0 0 560 250" role="img" aria-label="2層ネットワークの図" style="max-width:100%;height:auto">
                 <g stroke="#9db3cf" stroke-width="1">
@@ -165,12 +188,12 @@
                 <g font-size="14" text-anchor="middle" fill="#172338" font-style="italic">
                   <text x="80" y="55">x₀</text>
                   <text x="80" y="130">x₁</text>
-                  <text x="80" y="215">x_D</text>
+                  <text x="80" y="215">x<tspan font-size="10" dy="3">D</tspan></text>
                   <text x="280" y="45">z₀</text>
                   <text x="280" y="130">z₁</text>
-                  <text x="280" y="215">z_M</text>
+                  <text x="280" y="215">z<tspan font-size="10" dy="3">M</tspan></text>
                   <text x="480" y="90">y₁</text>
-                  <text x="480" y="175">y_K</text>
+                  <text x="480" y="175">y<tspan font-size="10" dy="3">K</tspan></text>
                 </g>
                 <g font-size="13" text-anchor="middle" fill="#50627b">
                   <text x="80" y="245">入力</text>
@@ -182,317 +205,214 @@
               </svg>
               <figcaption class="meta">2層ネットワーク（図5.1）。網掛けはバイアス用のダミー \(x_0=z_0=1\)。</figcaption>
             </figure>
-            <article class="card">
-              <h4>2層ネットワークの順伝播</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>隠れ層の活性化関数を \(h\)、出力の活性化関数を \(\sigma\) とする。\(a_j^{(1)},\,z_j,\,a_k^{(2)},\,y_k\) を重み・バイアスで書き、\(y_k(\boldsymbol x,\boldsymbol w)\) を1つの式にまとめよ。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>各層で重み付き和 → 活性化。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  a_j^{(1)}=\sum_{i=1}^{D}w_{ji}^{(1)}x_i+w_{j0}^{(1)},\quad z_j=h(a_j^{(1)})\qquad(j=1,\dots,M)
-\] \[
-  a_k^{(2)}=\sum_{j=1}^{M}w_{kj}^{(2)}z_j+w_{k0}^{(2)},\quad y_k=\sigma(a_k^{(2)})\qquad(k=1,\dots,K)
-\] \[
-  y_k(\boldsymbol x,\boldsymbol w)=\sigma\!\left(\sum_{j=1}^{M}w_{kj}^{(2)}\,h\!\left(\sum_{i=1}^{D}w_{ji}^{(1)}x_i+w_{j0}^{(1)}\right)+w_{k0}^{(2)}\right)
-\]</div>
-                  <p>\(h\) は可微分な非線形関数（シグモイド、\(\tanh\)）。\(w_{j0}\) はバイアス（以下 \(b_j\) とも書く）。</p>
-                  <details class="level-1">
-                    <summary>▶ 線形モデルとの対応</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>基底関数モデル</strong>\[y_k(\boldsymbol{x})=\sigma\Bigl(\sum_j w_{kj}\phi_j(\boldsymbol{x})+w_{k0}\Bigr)\]</div>
-                      <div class="step"><strong>基底をパラメータ化</strong>\[\phi_j(\boldsymbol{x})=h\!\left(\sum_i w_{ji}^{(1)}x_i+w_{j0}^{(1)}\right)\]</div>
-                      <p>「2層」は重みの層（\(\boldsymbol w^{(1)},\boldsymbol w^{(2)}\)）の数。</p>
-                      <details class="level-2">
-                        <summary>▶ 非線形が必要な理由</summary>
-                        <div class="detail-body">
-                          <div class="step"><strong>活性化がすべて恒等写像なら</strong>\[\boldsymbol{y}=W^{(2)}(W^{(1)}\boldsymbol{x}+\boldsymbol{b}^{(1)})+\boldsymbol{b}^{(2)}=(W^{(2)}W^{(1)})\boldsymbol{x}+(W^{(2)}\boldsymbol{b}^{(1)}+\boldsymbol{b}^{(2)})\]</div>
-                          <p>1つのアフィン変換になり、層を重ねても表現力は増えない（\(M&lt;\min(D,K)\) なら次元削減の制約が加わるだけ）。</p>
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>一般のフィードフォワード構造</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>一般のネットワークで、ユニット \(k\) の出力 \(z_k\) を、\(k\) へ結合するユニット \(j\) の出力 \(z_j\) で書け。フィードフォワードであるための条件は？</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>結合が回り込んで戻ってくると何が困るか。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[z_k=h\Bigl(\sum_j w_{kj}z_j\Bigr)\]</div>
-                  <p>和は \(k\) へ結合するすべての \(j\)（入力を含む）について取る。条件は<strong>有向閉路がない</strong>こと。このとき入力側から順に計算でき、出力は入力の決定的な関数になる。</p>
-                  <details class="level-1">
-                    <summary>▶ 2層構造からの一般化</summary>
-                    <div class="detail-body">
-                      <ul>
-                        <li><strong>スキップ層結合：</strong>入力から出力へ直接結合してよい。隠れユニットでも近似できる（第1層の重みを小さくして線形領域で使う）が、明示したほうが扱いやすい。</li>
-                        <li><strong>疎な結合：</strong>全結合でなくてよい（例：畳み込みネットワーク, 5.5.6）。</li>
-                        <li><strong>層数：</strong>PRML は重みの層数で数える。ユニットの層数で「3層」と呼ぶ文献もある。</li>
-                      </ul>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>バイアスの吸収</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>ダミー入力 \(x_0=\;\square\)、\(z_0=\;\square\) を導入すると \(a_j=\sum_{i=\square}^{D}w_{ji}^{(1)}x_i\) と書ける。ネットワーク全体を書き直せ。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(w_{j0}\cdot(\text{定数})=w_{j0}\)。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[x_0=1,\quad z_0=1\] \[
-  a_j=\sum_{i=0}^{D}w_{ji}^{(1)}x_i,\qquad
-  y_k=\sigma\!\left(\sum_{j=0}^{M}w_{kj}^{(2)}\,h\!\left(\sum_{i=0}^{D}w_{ji}^{(1)}x_i\right)\right)
-\]</div>
-                  <p>行列では \(\boldsymbol a=W^{(1)}\tilde{\boldsymbol x}\)、\(\tilde{\boldsymbol x}=(1,x_1,\dots,x_D)^\top\)。</p>
-                  <details class="level-1">
-                    <summary>▶ 0番目の項を取り出す</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\sum_{i=0}^{D}w_{ji}x_i=w_{j0}\cdot1+\sum_{i=1}^{D}w_{ji}x_i\]</div>
-                      <p>バイアスの勾配は \(\partial E_n/\partial w_{j0}=\delta_j z_0=\delta_j\)（5.3）。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>出力活性化</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>ソフトマックス \(y_k\) を指数関数で書き、\(\sum_k y_k=\;\square\) を埋めよ。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>分母を全クラスの指数和にする。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  \sigma(a)=\frac{1}{1+e^{-a}},\qquad
-  \mathrm{softmax}(\boldsymbol{a})_k=\frac{e^{a_k}}{\sum_l e^{a_l}},\qquad \sum_k y_k=1
-\]</div>
-                  <p>回帰→恒等写像、2クラス→シグモイド、多クラス→ソフトマックス（5.2 で導出）。</p>
-                  <details class="level-1">
-                    <summary>▶ 値域と総和</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>シグモイド</strong>\[0&lt;\sigma(a)&lt;1\]</div>
-                      <div class="step"><strong>ソフトマックス</strong>\[y_k&gt;0,\qquad \sum_k \frac{e^{a_k}}{\sum_l e^{a_l}}=\frac{\sum_k e^{a_k}}{\sum_l e^{a_l}}=1\]</div>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>可微分性：パーセプトロンとの違い</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>パーセプトロンのステップ関数 \(f(a)\) を隠れユニットに使うと、\(f'(a)\) は \(a\neq0\) で \(\square\)、\(a=0\) で \(\square\)。勾配法にとって何を意味するか。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>誤差を前の層へ伝えるとき \(h'(a)\) が掛かる。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <p><strong>\(a\neq0\) で0、\(a=0\) で定義できない → 重みの更新方向が得られない。</strong></p>
-                  <p>MLP は可微分なシグモイド／\(\tanh\) を使うので、ネットワーク全体がパラメータについて微分可能になり、勾配法で学習できる。</p>
-                  <details class="level-1">
-                    <summary>▶ シグモイドと tanh の導関数</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\sigma'(a)=\sigma(a)\bigl(1-\sigma(a)\bigr),\qquad \frac{d}{da}\tanh(a)=1-\tanh^2(a)\]</div>
-                      <p>順伝播で得た \(z=h(a)\) だけで評価できる。</p>
-                      <details class="level-2">
-                        <summary>▶ \(\tanh(a)=2\sigma(2a)-1\)（演習5.1）</summary>
-                        <div class="detail-body">
-                          <div class="step">\[2\sigma(2a)-1=\frac{2}{1+e^{-2a}}-1=\frac{1-e^{-2a}}{1+e^{-2a}}=\frac{e^{a}-e^{-a}}{e^{a}+e^{-a}}\]</div>
-                          <p>重みを線形変換すれば、どちらの活性化でも同じ関数を表現できる。</p>
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <div class="callout">
-              <strong>万能近似定理</strong>
-              <p>線形出力の2層ネットワークは、\(M\) を十分大きくすれば、コンパクトな入力領域上の任意の連続関数を任意の精度で一様近似できる（多項式以外の幅広い活性化関数で成立）。</p>
-              <p><strong>図5.3：</strong>隠れユニット3個（\(\tanh\)）・線形出力で、50点から \(x^2,\ \sin x,\ |x|\)、ステップ関数を近似できる。<br/>
-<strong>図5.4：</strong>隠れユニット2個（\(\tanh\)）・シグモイド出力の2クラス分類で、決定境界は最適境界に近い。</p>
-              <p class="meta">存在定理であり、必要な \(M\) や、有限データからその重みを学習で見つけられるかは保証しない。</p>
-            </div>
+            <ul>
+              <li><strong>バイアスの吸収：</strong>\(x_0=z_0=1\) を加えるとバイアスも重みとして書ける
+                <div class="equation">\[y_k(\boldsymbol x,\boldsymbol w)=\sigma\!\left(\sum_{j=0}^{M}w_{kj}^{(2)}\,h\!\left(\sum_{i=0}^{D}w_{ji}^{(1)}x_i\right)\right)\tag{5.9}\]</div>
+                <ul>
+                  <li>以降、バイアスは特別扱いしない</li>
+                </ul>
+              </li>
+            </ul>
+            <h3>なぜ「非線形」で「可微分」なのか</h3>
+            <ul>
+              <li><strong>非線形が必要：</strong>線形変換の合成は線形 → 層を重ねる意味がない
+                <div class="equation">\[W^{(2)}(W^{(1)}\boldsymbol{x})=(W^{(2)}W^{(1)})\boldsymbol{x}\]</div>
+              </li>
+              <li><strong>可微分が必要：</strong>ステップ関数は微分がほぼ0 → 勾配で学習できない
+                <ul>
+                  <li>MLPは連続な活性化関数 → 勾配法で学習できる（パーセプトロンとの本質的な違い）</li>
+                </ul>
+                <details class="level-1">
+                  <summary>おさらい：パーセプトロンとロジスティック回帰（4章）</summary>
+                  <div class="detail-body">
+                    <ul>
+                      <li><strong>パーセプトロン（4.1.7）：</strong>出力は ±1
+                        <div class="equation">\[y(\boldsymbol x)=f\bigl(\boldsymbol w^\top\boldsymbol\phi(\boldsymbol x)\bigr),\qquad f(a)=\begin{cases}+1 &amp; a\ge0\\-1 &amp; a&lt;0\end{cases}\tag{4.52, 4.53}\]</div>
+                        <ul>
+                          <li>誤分類の数は \(\boldsymbol w\) について区分的に一定 → 勾配が使えず、専用の学習則で更新</li>
+                        </ul>
+                      </li>
+                      <li><strong>ロジスティック回帰（4.3.2）：</strong>出力はクラス確率
+                        <div class="equation">\[p(C_1\mid\boldsymbol\phi)=\sigma(\boldsymbol w^\top\boldsymbol\phi),\qquad \sigma(a)=\frac{1}{1+e^{-a}}\tag{4.87, 4.59}\]</div>
+                        <ul>
+                          <li>微分可能 → 交差エントロピー誤差を勾配で最小化できる</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+                </details>
+              </li>
+              <li><strong>代表的な活性化関数</strong>
+                <div class="equation">\[\sigma(a)=\frac{1}{1+e^{-a}},\qquad \tanh(a)=\frac{e^{a}-e^{-a}}{e^{a}+e^{-a}}=2\sigma(2a)-1\tag{5.6, 5.59}\]</div>
+                <ul>
+                  <li>\(\tanh\) と \(\sigma\) は表せる関数が同じ（演習5.1）</li>
+                </ul>
+              </li>
+            </ul>
+            <h3>一般のフィードフォワード構造</h3>
+            <ul>
+              <li><strong>拡張：</strong>層を増やす／スキップ層結合（入力→出力の直結）／疎な結合（畳み込み、5.5.6）</li>
+              <li><strong>条件：</strong>有向閉路がないこと → 入力側から順に計算できる
+                <div class="equation">\[z_k=h\Bigl(\sum_j w_{kj}z_j\Bigr)\qquad(\text{和は } k \text{ へ結合する全ユニット } j)\tag{5.10}\]</div>
+                <ul>
+                  <li>閉路のあるNN（リカレントNNなど。時系列向き）もあるが、本章では扱わない</li>
+                </ul>
+              </li>
+              <li>5.3の逆伝播はこの一般形で導く</li>
+            </ul>
+            <h3>表現力：万能近似定理</h3>
+            <ul>
+              <li><strong>主張：</strong>線形出力の2層ネットワークは、隠れユニットを増やせば任意の連続関数を任意の精度で近似できる（有界閉な定義域上）</li>
+              <li><strong>図5.3：</strong>\(\tanh\) の隠れユニット3個で \(x^2\)、\(\sin x\)、\(|x|\)、ステップ関数を近似
+                <ul>
+                  <li>隠れユニット出力の重み付き和で目的の関数を作る</li>
+                </ul>
+              </li>
+              <li><strong>図5.4：</strong>隠れユニット2個の2クラス分類で、ほぼ最適な決定境界</li>
+              <li><strong>注意：</strong>存在定理にすぎない
+                <ul>
+                  <li>必要なユニット数も、学習で見つかるかも保証しない（→5.2）</li>
+                </ul>
+              </li>
+            </ul>
             <h3>5.1.1 重み空間対称性</h3>
-            <article class="card">
-              <h4>等価な重みの数</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(\tanh\) の隠れユニットが \(M\) 個のとき、同じ写像を与える重みは少なくとも \(\square\) 個。\(M=3\) では？</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>① \(\tanh\) は奇関数。② 隠れユニットの番号付けは任意。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[M!\,2^M\qquad(M=3:\;6\cdot8=48)\]</div>
-                  <ul>
-                    <li><strong>符号反転：</strong>ユニットに入る重み・バイアスと出る重みの符号をすべて反転しても不変。各ユニットで \(2^M\) 通り。</li>
-                    <li><strong>置換：</strong>隠れユニットを（重みごと）入れ替えても不変。\(M!\) 通り。</li>
-                  </ul>
-                  <details class="level-1">
-                    <summary>▶ 符号反転で不変な理由</summary>
-                    <div class="detail-body">
-                      <div class="step">\[z_j=\tanh(-a_j)=-\tanh(a_j),\qquad (-w_{kj}^{(2)})(-z_j)=w_{kj}^{(2)}z_j\]</div>
-                      <details class="level-2">
-                        <summary>▶ 影響</summary>
-                        <div class="detail-body">
-                          <p>\(E(\boldsymbol w)\) は等価な極小点を \(M!2^M\) 個持つ。最適化では問題にならないが、ベイズ的扱い（5.7）では考慮が要る場合がある。シグモイドでも \(\sigma(-a)=1-\sigma(a)\) から同様。</p>
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <div class="quiz"><strong>確認：</strong>① 活性化がすべて恒等写像なら、層を増やすと表現力は？　② ステップ関数を隠れユニットに使えない理由は？　③ 万能近似定理は学習の成功を保証するか？</div>
+            <ul>
+              <li><strong>目的：</strong>重みと関数が1対1でないことの確認</li>
+              <li><strong>符号反転：</strong>\(\tanh\) は奇関数 → ユニットに入る重みと出る重みの符号を同時に反転しても不変（\(2^M\) 通り）</li>
+              <li><strong>入れ替え：</strong>隠れユニットを重みごと入れ替えても不変（\(M!\) 通り）</li>
+              <li><strong>結論：</strong>同じ関数を表す重みが \(M!\,2^M\) 個（\(M=3\) で48個）</li>
+              <li><strong>影響：</strong>等価な極小が多数並ぶ
+                <ul>
+                  <li>最適化では無害、ベイズ的なモデル比較（5.7）では考慮が必要</li>
+                </ul>
+              </li>
+            </ul>
           </section>
           <!-- ===================== 5.2 ===================== -->
           <section id="s52">
             <h2>5.2 ネットワーク訓練</h2>
-            <p>確率モデルを置き、負の対数尤度を誤差関数として最小化する。出力活性化と誤差関数の組は問題の種類ごとに決まる。</p>
-            <article class="card">
-              <h4>回帰：ガウス雑音 → 二乗和誤差</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(t_n\sim\mathcal N(y(\boldsymbol x_n,\boldsymbol w),\beta^{-1})\)（独立、出力は恒等写像）。\(\boldsymbol{w}\) に依存する負の対数尤度を書け。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>対数を取るとガウス分布の指数部の二乗項が残る。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  E(\boldsymbol{w})=\frac12\sum_{n=1}^{N}\bigl(y(\boldsymbol{x}_n,\boldsymbol{w})-t_n\bigr)^2
-\]</div>
-                  <details class="level-1">
-                    <summary>▶ 導出</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>尤度</strong>\[p(\boldsymbol{t}\mid X,\boldsymbol{w},\beta)=\prod_{n=1}^{N}\sqrt{\frac{\beta}{2\pi}}\exp\!\left(-\frac\beta2(t_n-y_n)^2\right)\]</div>
-                      <div class="step"><strong>負の対数</strong>\[-\ln p=\beta E(\boldsymbol{w})-\frac{N}{2}\ln\beta+\frac{N}{2}\ln 2\pi\]</div>
-                      <p>第2・3項は \(\boldsymbol w\) によらず \(\beta&gt;0\) なので、\(E\) の最小化と同じ。\(E\) は非凸なので、得られるのは通常は局所解。</p>
-                      <details class="level-2">
-                        <summary>▶ 多出力と \(\beta\) の最尤解</summary>
-                        <div class="detail-body">
-                          <p>\(K\) 個の目標が独立で精度 \(\beta\) が共通：\(p(\boldsymbol t\mid\boldsymbol x,\boldsymbol w)=\mathcal N(\boldsymbol t\mid\boldsymbol y(\boldsymbol x,\boldsymbol w),\beta^{-1}I)\)。</p>
-                          <div class="step"><strong>負の対数尤度</strong>\[\frac\beta2\sum_{n}\|\boldsymbol y(\boldsymbol x_n,\boldsymbol w)-\boldsymbol t_n\|^2-\frac{NK}{2}\ln\beta+\text{const}\]</div>
-                          <div class="step"><strong>\(\boldsymbol w_{\mathrm{ML}}\) を求めた後、\(\beta\) で微分して0とおく</strong>\[\frac{1}{\beta_{\mathrm{ML}}}=\frac{1}{NK}\sum_{n=1}^{N}\|\boldsymbol y(\boldsymbol x_n,\boldsymbol w_{\mathrm{ML}})-\boldsymbol t_n\|^2\]</div>
-                          <p>雑音分散の推定値＝平均二乗残差。</p>
-                        </div>
-                      </details>
+            <div class="goal">
+              <p class="label">この節のねらい</p>
+              <ul>
+                <li><strong>目的：</strong>重みをデータから決める方法を整える</li>
+                <li><strong>やること：</strong>① 最尤推定から「出力活性化＋誤差関数」の組を導く　② 誤差曲面を眺め、勾配による反復最適化の必要性と利点を示す</li>
+                <li><strong>わかること：</strong>どの問題でも誤差の微分が「出力 − 目標」になる。勾配を使うと \(O(W^3)\to O(W^2)\) → 勾配の高速計算（5.3）が鍵</li>
+              </ul>
+            </div>
+            <h3>誤差関数の導き方：確率的解釈</h3>
+            <ul>
+              <li>素朴には二乗和誤差でもよい</li>
+              <li>出力を「目標の分布のパラメータ」と見ると、出力活性化と誤差関数を理由をもって選べる</li>
+              <li><strong>手順：</strong>目標値 \(\boldsymbol t\) の分布 \(p(\boldsymbol t\mid\boldsymbol x,\boldsymbol w)\) を仮定 → 尤度 → 負の対数 ＝ 誤差関数
+                <ul>
+                  <li>データ数 \(N\)。誤差はデータ点ごとの和 \(E(\boldsymbol w)=\sum_nE_n(\boldsymbol w)\)（\(E_n\)：データ点 \(n\) の分）</li>
+                </ul>
+                <details class="level-1">
+                  <summary>おさらい：最尤推定と誤差関数（1・2章）</summary>
+                  <div class="detail-body">
+                    <ul>
+                      <li>独立なデータの尤度は積：\(p(\mathbf T\mid X,\boldsymbol w)=\prod_n p(\boldsymbol t_n\mid\boldsymbol x_n,\boldsymbol w)\)</li>
+                      <li>負の対数尤度 ＝ 誤差関数 \(E(\boldsymbol w)\)
+                        <ul>
+                          <li>尤度の最大化 ⇔ 誤差の最小化</li>
+                          <li>積が和になる：\(E=\sum_nE_n\) → 5.2.4・5.3で使う</li>
+                        </ul>
+                      </li>
+                    </ul>
+                    <div class="tbl-wrap">
+                      <table class="tbl">
+                        <thead>
+                          <tr>
+                            <th>目標変数</th>
+                            <th>分布</th>
+                            <th>1点の確率</th>
+                            <th>式番号</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>実数値</td>
+                            <td>ガウス（精度 \(\beta\)）</td>
+                            <td>\(\sqrt{\tfrac{\beta}{2\pi}}\exp\bigl(-\tfrac\beta2(t-y)^2\bigr)\)</td>
+                            <td>(1.46)</td>
+                          </tr>
+                          <tr>
+                            <td>\(t\in\{0,1\}\)</td>
+                            <td>ベルヌーイ</td>
+                            <td>\(y^{t}(1-y)^{1-t}\)</td>
+                            <td>(2.2)</td>
+                          </tr>
+                          <tr>
+                            <td>\(K\) クラスのどれか</td>
+                            <td>カテゴリカル</td>
+                            <td>\(\prod_{k}y_k^{t_k}\)</td>
+                            <td>(2.26)</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>二値分類：ベルヌーイ分布</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(t\in\{0,1\}\)、\(y=\sigma(a)=p(t=1\mid\boldsymbol x)\)。\(p(t\mid\boldsymbol x,\boldsymbol w)=\;\square\) と \(E(\boldsymbol w)\) を書け。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>指数 \(t,\;1-t\) で1つの式にする。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  p(t\mid\boldsymbol x,\boldsymbol w)=y^{t}(1-y)^{1-t}
-\] \[
-  E(\boldsymbol w)=-\sum_{n=1}^{N}\bigl\{t_n\ln y_n+(1-t_n)\ln(1-y_n)\bigr\}
-\]</div>
-                  <p>交差エントロピー誤差。分類では二乗和より学習が速く、汎化も良いことが多い（Simard et al., 2003）。</p>
-                  <details class="level-1">
-                    <summary>▶ 独立な \(K\) 個の二値ラベル</summary>
-                    <div class="detail-body">
-                      <p>出力ごとにシグモイドを使い \(p(\boldsymbol t\mid\boldsymbol x,\boldsymbol w)=\prod_{k}y_k^{t_k}(1-y_k)^{1-t_k}\) とすると</p>
-                      <div class="step">\[E(\boldsymbol w)=-\sum_{n=1}^{N}\sum_{k=1}^{K}\bigl\{t_{nk}\ln y_{nk}+(1-t_{nk})\ln(1-y_{nk})\bigr\}\]</div>
-                      <p>第1層の重みを複数ラベルで共有できる。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>多クラス分類：交差エントロピー</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>1-of-\(K\) の目標 \(t_{nk}\) と予測確率 \(y_{nk}\) から \(E(\boldsymbol w)=\;\square\)。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>1点の尤度は \(\prod_k y_{nk}^{t_{nk}}\)。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  y_k=\frac{\exp(a_k)}{\sum_j \exp(a_j)},\qquad
-  E(\boldsymbol{w})=-\sum_{n=1}^{N}\sum_{k=1}^{K}t_{nk}\ln y_{nk}
-\]</div>
-                  <details class="level-1">
-                    <summary>▶ 例と注意</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>正解がクラス2</strong>\[\boldsymbol{t}_n=(0,1,0),\quad p=y_{n2},\quad E_n=-\ln y_{n2}\]</div>
-                      <p>全 \(a_k\) に同じ定数を足しても出力は不変なので、重み空間に誤差一定の方向がある。重み減衰（5.2.4）で解消される。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
+                  </div>
+                </details>
+              </li>
+            </ul>
+            <h4>回帰：ガウス → 二乗和誤差</h4>
+            <ul>
+              <li><strong>仮定：</strong>\(t\sim\mathcal N\bigl(y(\boldsymbol x,\boldsymbol w),\beta^{-1}\bigr)\)<span class="eqno">(5.12)</span>、出力は恒等写像
+                <ul>
+                  <li>\(\beta\)：雑音の精度（分散の逆数）</li>
+                </ul>
+              </li>
+              <li><strong>負の対数尤度：</strong>
+                <div class="equation">\[\frac\beta2\sum_{n=1}^{N}\bigl(y(\boldsymbol x_n,\boldsymbol w)-t_n\bigr)^2-\frac N2\ln\beta+\frac N2\ln(2\pi)\tag{5.13}\]</div>
+                <ul>
+                  <li>\(\boldsymbol w\) に関係するのは第1項 → 二乗和誤差 \(E=\frac12\sum_n(y_n-t_n)^2\)<span class="eqno">(5.14)</span> の最小化と同じ</li>
+                  <li>雑音分散 \(1/\beta_{\mathrm{ML}}\) ＝ 平均二乗残差<span class="eqno">(5.15)</span></li>
+                  <li>\(E\) は非凸 → 得られるのは局所解</li>
+                </ul>
+              </li>
+            </ul>
+            <h4>2値分類：ベルヌーイ → 交差エントロピー</h4>
+            <ul>
+              <li><strong>仮定：</strong>シグモイド出力 \(y=p(C_1\mid\boldsymbol x)\)<span class="eqno">(5.19)</span>、\(p(t\mid\boldsymbol x,\boldsymbol w)=y^{t}(1-y)^{1-t}\)<span class="eqno">(5.20)</span>
+                <ul>
+                  <li>\(t=1\)：クラス \(C_1\)、\(t=0\)：クラス \(C_2\)</li>
+                </ul>
+              </li>
+              <li><strong>誤差関数：</strong>
+                <div class="equation">\[E(\boldsymbol w)=-\sum_{n=1}^{N}\bigl\{t_n\ln y_n+(1-t_n)\ln(1-y_n)\bigr\}\tag{5.21}\]</div>
+                <ul>
+                  <li>分類では二乗和より学習が速く、汎化も良い（Simard et al., 2003）</li>
+                </ul>
+              </li>
+              <li><strong>独立な2値ラベルが \(K\) 個：</strong>出力ごとにシグモイド<span class="eqno">(5.22, 5.23)</span>
+                <ul>
+                  <li>線形モデルとの違い：第1層（特徴抽出）を全出力で共有できる</li>
+                </ul>
+              </li>
+            </ul>
+            <h4>多クラス分類：カテゴリカル → 多クラス交差エントロピー</h4>
+            <ul>
+              <li><strong>仮定：</strong>目標は1-of-\(K\) 符号化、ソフトマックス出力 \(y_k=p(t_k=1\mid\boldsymbol x)\)<span class="eqno">(5.25)</span>
+                <ul>
+                  <li>1-of-\(K\) 符号化：正解クラスの成分だけ1（例：\(K=3\)、クラス2 → \((0,1,0)^\top\)）。\(t_{nk}\)：データ点 \(n\) の第 \(k\) 成分</li>
+                </ul>
+              </li>
+              <li><strong>誤差関数：</strong>
+                <div class="equation">\[E(\boldsymbol w)=-\sum_{n=1}^{N}\sum_{k=1}^{K}t_{nk}\ln y_k(\boldsymbol x_n,\boldsymbol w)\tag{5.24}\]</div>
+              </li>
+              <li><strong>注意：</strong>全ての \(a_k\) に同じ定数を足しても出力は不変 → 解が一意でない
+                <ul>
+                  <li>正則化（5.5）で解消</li>
+                </ul>
+              </li>
+            </ul>
             <div class="tbl-wrap">
               <table class="tbl">
                 <thead>
                   <tr>
                     <th>問題</th>
-                    <th>分布</th>
-                    <th>出力活性化</th>
+                    <th>目標の分布</th>
+                    <th>出力の活性化関数</th>
                     <th>誤差関数</th>
                     <th>\(\partial E_n/\partial a_k\)</th>
                   </tr>
@@ -506,7 +426,7 @@
                     <td>\(y_k-t_k\)</td>
                   </tr>
                   <tr>
-                    <td>二値分類（複数ラベル可）</td>
+                    <td>（複数の独立な）2値分類</td>
                     <td>ベルヌーイ</td>
                     <td>シグモイド</td>
                     <td>交差エントロピー</td>
@@ -522,456 +442,423 @@
                 </tbody>
               </table>
             </div>
-            <article class="card">
-              <h4>誤差の微分は「出力 − 目標」</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(y=\sigma(a)\)、\(E_n=-\{t\ln y+(1-t)\ln(1-y)\}\) のとき \(\partial E_n/\partial a=\;\square\)。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(\partial E_n/\partial y\) に \(\sigma'(a)=y(1-y)\) を掛ける。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\boxed{\frac{\partial E_n}{\partial a_k}=y_k-t_k}\]</div>
-                  <p>表の3種類すべてで同じ形（正準連結関数の組合せのため）。5.3 で出力層の誤差信号 \(\delta_k\) になる。</p>
-                  <details class="level-1">
-                    <summary>▶ 導出</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\frac{\partial E_n}{\partial y}=-\frac{t}{y}+\frac{1-t}{1-y}=\frac{y-t}{y(1-y)},\qquad \frac{\partial E_n}{\partial a}=\frac{y-t}{y(1-y)}\cdot y(1-y)=y-t\]</div>
-                      <p>回帰とソフトマックスは 5.3「出力層の \(\delta\)」で導出。</p>
-                      <details class="level-2">
-                        <summary>▶ 組合せを誤ると</summary>
-                        <div class="detail-body">
-                          <p>シグモイド＋二乗和では \(\partial E/\partial a=(y-t)\,y(1-y)\)。\(y\) が0か1に張り付くと、誤っていても勾配が小さく学習が停滞しやすい。</p>
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <h3>5.2.1 パラメータ最適化</h3>
-            <p>\(E(\boldsymbol w)\) は非凸で、多数の局所極小（対称性による等価な解を含む）や鞍点を持つ。\(\nabla E=0\) は解析的に解けないので、反復法 \(\boldsymbol w^{(\tau+1)}=\boldsymbol w^{(\tau)}+\Delta\boldsymbol w^{(\tau)}\) を使う。</p>
-            <article class="card">
-              <h4>重みを少し動かしたときの誤差の変化</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(\delta E\simeq\;\square\)（\(\boldsymbol w\to\boldsymbol w+\delta\boldsymbol w\)）。(a) \(\nabla E\) の向きの意味、(b) 極小点の条件は？</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>1変数なら \(\delta E\simeq E'(w)\,\delta w\)。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\delta E\simeq\delta\boldsymbol w^\top\nabla E(\boldsymbol w)\]</div>
-                  <p>(a) 誤差が最も急に増える方向。\(-\nabla E\) へ進めば減る。(b) 停留点 \(\nabla E(\boldsymbol w)=0\)。</p>
-                  <details class="level-1">
-                    <summary>▶ 停留点と初期値</summary>
-                    <div class="detail-body">
-                      <ul>
-                        <li>停留点は極小・極大・鞍点のいずれか（判定はヘッセ行列、5.2.2）。</li>
-                        <li>大域的極小を見つける必要はなく、十分良い局所極小でよいことが多い。</li>
-                        <li>到達先は初期値に依存するので、複数の初期値で学習して比較する。</li>
-                      </ul>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <h3>5.2.2 局所二次近似</h3>
-            <article class="card">
-              <h4>ヘッセ行列</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(\hat{\boldsymbol w}\) のまわりで \(E\) を2次までテイラー展開せよ（勾配 \(\boldsymbol b\)、ヘッセ行列 \(\mathbf H\)）。極小点 \(\boldsymbol w^\star\) で消える項は？</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>1変数の2次展開をベクトルに拡張する。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  E(\boldsymbol w)\simeq E(\hat{\boldsymbol w})+(\boldsymbol w-\hat{\boldsymbol w})^\top\boldsymbol b+\frac12(\boldsymbol w-\hat{\boldsymbol w})^\top\mathbf H(\boldsymbol w-\hat{\boldsymbol w}),\quad (\mathbf H)_{ij}=\frac{\partial^2E}{\partial w_i\partial w_j}
-\]</div>
-                  <p>\(\boldsymbol w^\star\) では \(\boldsymbol b=0\)：</p>
-                  <div class="equation">\[E(\boldsymbol w)\simeq E(\boldsymbol w^\star)+\frac12(\boldsymbol w-\boldsymbol w^\star)^\top\mathbf H(\boldsymbol w-\boldsymbol w^\star)\]</div>
-                  <details class="level-1">
-                    <summary>▶ 固有ベクトル表示</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\mathbf H\boldsymbol u_i=\lambda_i\boldsymbol u_i,\quad \boldsymbol w-\boldsymbol w^\star=\sum_i\alpha_i\boldsymbol u_i\;\Rightarrow\; E(\boldsymbol w)=E(\boldsymbol w^\star)+\frac12\sum_i\lambda_i\alpha_i^2\]</div>
-                      <p>全 \(\lambda_i&gt;0\)（\(\mathbf H\) が正定値）なら極小、負の固有値があれば鞍点。等高線は軸 \(\boldsymbol u_i\)、長さ \(\propto\lambda_i^{-1/2}\) の楕円。固有値が小さい方向は曲面が平らで、勾配降下の収束が遅い。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <h3>5.2.3 勾配情報の利用</h3>
-            <article class="card">
-              <h4>勾配を使う利点</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>二次近似の独立なパラメータは \(O(\square)\) 個。\(E\) の値だけを使う場合と勾配を使う場合で、極小を決める計算量を見積もれ（1回の評価は \(O(W)\)）。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>1回の評価で得る情報は、\(E\) なら1個、\(\nabla E\) なら \(W\) 個。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="tbl-wrap">
-                    <table class="tbl">
-                      <thead>
-                        <tr>
-                          <th></th>
-                          <th>1回の情報</th>
-                          <th>評価回数</th>
-                          <th>1回のコスト</th>
-                          <th>合計</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>\(E\) のみ</td>
-                          <td>1個</td>
-                          <td>\(O(W^2)\)</td>
-                          <td>\(O(W)\)</td>
-                          <td>\(O(W^3)\)</td>
-                        </tr>
-                        <tr>
-                          <td>\(\nabla E\)（逆伝播）</td>
-                          <td>\(W\) 個</td>
-                          <td>\(O(W)\)</td>
-                          <td>\(O(W)\)</td>
-                          <td>\(O(W^2)\)</td>
-                        </tr>
-                      </tbody>
-                    </table>
+            <h3>共通の結果：誤差の微分は「出力 − 目標」</h3>
+            <div class="equation">\[\boxed{\frac{\partial E_n}{\partial a_k}=y_k-t_k}\tag{5.18}\]</div>
+            <ul>
+              <li><strong>理由：</strong>正準連結関数の組を使っているから（4.3.6）
+                <details class="level-1">
+                  <summary>おさらい：正準連結関数（4.3.6）</summary>
+                  <div class="detail-body">
+                    <ul>
+                      <li>4章の勾配はどれも「(出力 − 目標) × 基底」の形
+                        <div class="equation">\[\nabla E(\boldsymbol w)=\sum_{n=1}^{N}(y_n-t_n)\,\boldsymbol\phi_n\tag{4.91}\]</div>
+                        <ul>
+                          <li>ロジスティック回帰＋交差エントロピー<span class="eqno">(4.91)</span>、ソフトマックス＋多クラス交差エントロピー<span class="eqno">(4.109)</span>、線形回帰＋二乗和誤差<span class="eqno">(3.13)</span>で共通</li>
+                        </ul>
+                      </li>
+                      <li>目標の分布に対応する「正準連結関数」で出力関数を決めると、常にこの形になる<span class="eqno">(4.124)</span>
+                        <ul>
+                          <li>ガウス ↔ 恒等写像、ベルヌーイ ↔ シグモイド、カテゴリカル ↔ ソフトマックス</li>
+                        </ul>
+                      </li>
+                      <li>5章では基底 \(\boldsymbol\phi_n\) が隠れユニットの出力 \(z_j\) に置き換わる</li>
+                    </ul>
                   </div>
-                  <details class="level-1">
-                    <summary>▶ パラメータ数</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>\(\boldsymbol b\) と対称行列 \(\mathbf H\) の独立成分</strong>\[W+\frac{W(W+1)}{2}=\frac{W(W+3)}{2}=O(W^2)\]</div>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <h3>5.2.4 勾配降下最適化</h3>
-            <article class="card">
-              <h4>バッチと確率的勾配降下</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(E=\sum_n E_n\) に対する、バッチ勾配降下と確率的勾配降下（SGD）の更新式を書け。</p>
+                </details>
+              </li>
+              <li><strong>意味：</strong>勾配 ＝ 予測の外れ具合。5.3で出力層の \(\delta_k\) になる</li>
+              <li><strong>補足：</strong>シグモイド＋二乗和だと \((y-t)\,y(1-y)\)
+                <ul>
+                  <li>\(y\) が0や1に張り付くと、外れていても勾配が消えて学習が止まる</li>
+                </ul>
+              </li>
+            </ul>
+            <details class="level-1">
+              <summary>導出（シグモイド／ソフトマックス）</summary>
+              <div class="detail-body">
+                <div class="step"><strong>シグモイド：\(\sigma'(a)=y(1-y)\) を使う</strong>\[\frac{\partial E_n}{\partial y}=-\frac{t}{y}+\frac{1-t}{1-y}=\frac{y-t}{y(1-y)},\qquad \frac{\partial E_n}{\partial a}=\frac{y-t}{y(1-y)}\cdot y(1-y)=y-t\]</div>
+                <div class="step"><strong>ソフトマックス：\(\sum_l t_l=1\) で書き換えてから微分</strong>\[E_n=-\sum_l t_la_l+\ln\sum_re^{a_r},\qquad \frac{\partial E_n}{\partial a_k}=-t_k+\frac{e^{a_k}}{\sum_re^{a_r}}=y_k-t_k\]</div>
               </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>勾配の逆向きに進む。違いは \(E\) か \(E_n\) か。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\text{バッチ：}\ \boldsymbol{w}^{(\tau+1)}=\boldsymbol{w}^{(\tau)}-\eta\nabla E(\boldsymbol{w}^{(\tau)}),\qquad \text{SGD：}\ \boldsymbol{w}^{(\tau+1)}=\boldsymbol{w}^{(\tau)}-\eta\nabla E_n(\boldsymbol{w}^{(\tau)})\]</div>
-                  <p>\(\eta&gt;0\) は学習率。</p>
-                  <ul>
-                    <li><strong>バッチ：</strong>単純な勾配降下は性能が悪い。共役勾配法や準ニュートン法のほうが効率的で頑健。</li>
-                    <li><strong>SGD：</strong>① データの冗長性に強い（データを複製して2倍にしても、バッチは計算量2倍、SGD は不変）。② 全データの停留点は個々の \(E_n\) の停留点ではないので、局所極小を抜け出せる可能性がある。</li>
-                  </ul>
-                  <details class="level-1">
-                    <summary>▶ 重み減衰</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\widetilde E(\boldsymbol{w})=E(\boldsymbol{w})+\frac\lambda2\boldsymbol{w}^\top\boldsymbol w,\qquad \nabla \widetilde E=\nabla E+\lambda\boldsymbol{w}\]</div>
-                      <p>更新ごとに重みを \((1-\eta\lambda)\) 倍に縮める。バイアスを除くこともある（5.5）。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <div class="quiz"><strong>確認：</strong>① 二乗和誤差は何を仮定すると導かれる？　② 3種類の問題で \(\partial E_n/\partial a_k\) が揃う理由は？　③ SGD がバッチより有利な点を2つ。</div>
+            </details>
+            <h3>5.2.1 パラメータ最適化</h3>
+            <ul>
+              <li><strong>目的：</strong>最小化の難しさを、重み空間上の誤差曲面として捉える（図5.5）</li>
+              <li><strong>勾配：</strong>重みを少し \(\delta\boldsymbol w\) 動かすと、誤差の変化は \(\delta E\simeq\delta\boldsymbol w^\top\nabla E\)
+                <ul>
+                  <li>\(\nabla E\)：勾配（誤差が最も急に増える向き）→ \(-\nabla E\) 方向に進めば誤差が減る</li>
+                </ul>
+              </li>
+              <li><strong>停留点</strong> \(\nabla E=0\)<span class="eqno">(5.26)</span>：極小・極大・鞍点のいずれか</li>
+              <li><strong>地形</strong>
+                <ul>
+                  <li>対称性による等価な極小（\(M!\,2^M\) 個ずつ）</li>
+                  <li>値の異なる局所極小も多数</li>
+                </ul>
+              </li>
+              <li><strong>方針：</strong>大域的極小は不要。複数の局所極小を比べて十分良いものを選ぶ</li>
+              <li><strong>解法：</strong>解析解はない → 反復法
+                <div class="equation">\[\boldsymbol w^{(\tau+1)}=\boldsymbol w^{(\tau)}+\Delta\boldsymbol w^{(\tau)}\tag{5.27}\]</div>
+                <ul>
+                  <li>\(\tau\)：反復回数。更新量 \(\Delta\boldsymbol w\) の決め方 ＝ アルゴリズムの違い</li>
+                </ul>
+              </li>
+            </ul>
+            <h3>5.2.2 局所二次近似</h3>
+            <ul>
+              <li><strong>目的：</strong>極小付近の地形を二次関数で理解する（5.2.3、5.4、5.7でも使う）</li>
+              <li><strong>テイラー展開</strong>：点 \(\hat{\boldsymbol w}\) のまわりで2次まで（\(\boldsymbol b\)：勾配、\(\mathbf H\)：2階微分を並べたヘッセ行列）
+                <div class="equation">\[E(\boldsymbol w)\simeq E(\hat{\boldsymbol w})+(\boldsymbol w-\hat{\boldsymbol w})^\top\boldsymbol b+\frac12(\boldsymbol w-\hat{\boldsymbol w})^\top\mathbf H(\boldsymbol w-\hat{\boldsymbol w}),\qquad (\mathbf H)_{ij}=\frac{\partial^2E}{\partial w_i\partial w_j}\tag{5.28, 5.30}\]</div>
+              </li>
+              <li><strong>極小 \(\boldsymbol w^\star\) のまわり</strong>：\(\boldsymbol b=0\)。\(\mathbf H\) の固有ベクトル \(\boldsymbol u_i\)（固有値 \(\lambda_i\)）方向の座標 \(\alpha_i\) で書くと
+                <div class="equation">\[E(\boldsymbol w)\simeq E(\boldsymbol w^\star)+\frac12\sum_i\lambda_i\alpha_i^2\qquad\Bigl(\boldsymbol w-\boldsymbol w^\star=\sum_i\alpha_i\boldsymbol u_i\Bigr)\tag{5.36}\]</div>
+                <ul>
+                  <li>固有ベクトル方向ごとの放物線の和</li>
+                  <li>全ての \(\lambda_i&gt;0\)（\(\mathbf H\) が正定値）⇔ 極小。負があれば鞍点</li>
+                  <li>等高線は楕円、軸の長さ \(\propto\lambda_i^{-1/2}\)（図5.6）</li>
+                  <li>\(\lambda_i\) が小さい方向は平らな細長い谷 → 単純な勾配降下はジグザグで遅い</li>
+                </ul>
+              </li>
+            </ul>
+            <h3>5.2.3 勾配情報の利用</h3>
+            <ul>
+              <li><strong>目的：</strong>勾配を使う利点を計算量で見積もる</li>
+              <li>二次近似の独立なパラメータは \(W(W+3)/2=O(W^2)\) 個 → \(O(W^2)\) 個の情報が必要</li>
+              <li>1回の評価で得る情報：\(E\) なら1個、\(\nabla E\) なら \(W\) 個</li>
+            </ul>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>使う情報</th>
+                    <th>1回で得る情報</th>
+                    <th>必要な評価回数</th>
+                    <th>1回のコスト</th>
+                    <th>合計</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>\(E\) の値のみ</td>
+                    <td>1個</td>
+                    <td>\(O(W^2)\)</td>
+                    <td>\(O(W)\)</td>
+                    <td>\(O(W^3)\)</td>
+                  </tr>
+                  <tr>
+                    <td>勾配 \(\nabla E\)（逆伝播）</td>
+                    <td>\(W\) 個</td>
+                    <td>\(O(W)\)</td>
+                    <td>\(O(W)\)</td>
+                    <td>\(O(W^2)\)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ul>
+              <li><strong>結論：</strong>勾配で \(O(W^3)\to O(W^2)\)
+                <ul>
+                  <li>ただし \(\nabla E\) を \(O(W)\) で計算できることが前提 → 5.3</li>
+                </ul>
+              </li>
+            </ul>
+            <h3>5.2.4 勾配降下最適化</h3>
+            <ul>
+              <li><strong>勾配降下</strong>（\(\eta\)：学習率）
+                <div class="equation">\[\boldsymbol{w}^{(\tau+1)}=\boldsymbol{w}^{(\tau)}-\eta\nabla E(\boldsymbol{w}^{(\tau)})\tag{5.41}\]</div>
+              </li>
+              <li><strong>バッチ法</strong>（全データで \(\nabla E\) を計算して更新）
+                <ul>
+                  <li>単純な勾配降下は性能が悪い</li>
+                  <li>共役勾配法・準ニュートン法のほうが速く頑健</li>
+                  <li>初期値を変えて複数回学習し、検証データで比較</li>
+                </ul>
+              </li>
+              <li><strong>確率的勾配降下（SGD）</strong>（\(E=\sum_nE_n\)<span class="eqno">(5.42)</span> の1点ずつ更新）
+                <div class="equation">\[\boldsymbol{w}^{(\tau+1)}=\boldsymbol{w}^{(\tau)}-\eta\nabla E_n(\boldsymbol{w}^{(\tau)})\tag{5.43}\]</div>
+                <ul>
+                  <li>利点①：データの冗長性に強い（データを複製しても計算量が増えない）</li>
+                  <li>利点②：局所極小を抜け出せる可能性（全体の停留点は個々の \(E_n\) の停留点ではない）</li>
+                  <li>中間的な方法：ミニバッチ</li>
+                </ul>
+              </li>
+              <li><strong>背景：</strong>現在の深層学習ではミニバッチSGDとその改良版（モメンタム、Adam など）が標準</li>
+            </ul>
           </section>
           <!-- ===================== 5.3 ===================== -->
           <section id="s53">
             <h2>5.3 誤差逆伝播</h2>
-            <p>学習の各反復は2段階：① 誤差の重みに関する微分を評価、② それを使って重みを更新（勾配降下・共役勾配・準ニュートン法など）。逆伝播は①の手法で、ヤコビ行列やヘッセ行列の計算にも使える。以下は1データ点の誤差 \(E_n\) で考える（\(\nabla E=\sum_n\nabla E_n\)）。</p>
-            <div class="goal">要点：各ユニットの \(\delta\) を出力側から順に求め、再利用する。</div>
+            <div class="goal">
+              <p class="label">この節のねらい</p>
+              <ul>
+                <li><strong>目的：</strong>勾配 \(\nabla E\) を \(O(W)\) で計算する方法を導く</li>
+                <li><strong>やること：</strong>各ユニットに誤差信号 \(\delta\) を定義し、出力側から入力側へ逆向きに計算する</li>
+                <li><strong>わかること：</strong>勾配は「出力側の \(\delta\) × 入力側の \(z\)」。順伝播1回＋逆伝播1回で全勾配が求まる</li>
+              </ul>
+            </div>
+            <h3>用語：「逆伝播」が指すもの</h3>
+            <ul>
+              <li><strong>学習の1反復は2段階</strong>
+                <ol>
+                  <li>誤差の微分を計算する ← <strong>逆伝播</strong></li>
+                  <li>微分で重みを更新する ← 勾配降下・準ニュートン法など</li>
+                </ol>
+              </li>
+              <li><strong>2つは独立</strong>
+                <ul>
+                  <li>逆伝播：他のネットワーク・誤差関数、ヤコビ行列・ヘッセ行列にも使える</li>
+                  <li>更新：勾配降下より強力な手法も選べる</li>
+                </ul>
+              </li>
+            </ul>
+            <div class="flow">順伝播（\(a,\,z\)）　→　逆伝播（\(\delta\)）　→　勾配 \(\delta_jz_i\)　→　最適化手法で更新</div>
             <h3>5.3.1 誤差関数微分の評価</h3>
-            <article class="card">
-              <h4>出発点：線形モデルの勾配</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(y_k=\sum_i w_{ki}x_i\)、\(E_n=\frac12\sum_k(y_{nk}-t_{nk})^2\) のとき \(\partial E_n/\partial w_{ji}=\;\square\)。形を言葉で解釈せよ。</p>
+            <ul>
+              <li><strong>前提：</strong>\(E=\sum_nE_n\)。1点分の \(\nabla E_n\) を求める（バッチ法なら足し合わせる）</li>
+              <li><strong>設定：</strong>任意のフィードフォワード構造。各ユニットで
+                <div class="equation">\[a_j=\sum_i w_{ji}z_i,\qquad z_j=h(a_j)\tag{5.48, 5.49}\]</div>
+                <ul>
+                  <li>\(z_i\)：ユニット \(j\) へ結合するユニット（または入力）の出力、\(w_{ji}\)：その結合の重み</li>
+                </ul>
+              </li>
+            </ul>
+            <h4>出発点：線形モデル</h4>
+            <ul>
+              <li>\(y_k=\sum_iw_{ki}x_i\)<span class="eqno">(5.45)</span>、二乗和誤差なら
+                <div class="equation">\[\frac{\partial E_n}{\partial w_{ji}}=(y_{nj}-t_{nj})\,x_{ni}\tag{5.47}\]</div>
+                <ul>
+                  <li>形：出力側の誤差信号 × 入力側の値 → これを多層に拡張したい</li>
+                </ul>
+              </li>
+            </ul>
+            <h4>ステップ1：重みの勾配 ＝ \(\delta_j z_i\)</h4>
+            <div class="equation">\[\boxed{\frac{\partial E_n}{\partial w_{ji}}=\frac{\partial E_n}{\partial a_j}\frac{\partial a_j}{\partial w_{ji}}=\delta_j z_i}\qquad\Bigl(\delta_j\equiv\frac{\partial E_n}{\partial a_j}\Bigr)\tag{5.50–5.53}\]</div>
+            <ul>
+              <li>\(z_i\) は順伝播で計算済み → 未知は \(\delta_j\) だけ</li>
+              <li>バイアス：\(\partial E_n/\partial w_{j0}=\delta_j\)（\(z_0=1\)）</li>
+            </ul>
+            <h4>ステップ2：出力層の \(\delta_k\)</h4>
+            <ul>
+              <li>正準な組なら \(\delta_k=y_k-t_k\)<span class="eqno">(5.54)</span>（5.2の結果そのもの）</li>
+            </ul>
+            <h4>ステップ3：隠れ層の \(\delta_j\)（逆伝播）</h4>
+            <figure style="margin:16px 0;text-align:center">
+              <svg viewBox="0 0 560 240" role="img" aria-label="逆伝播の図：ユニットjの誤差信号は、結合先ユニットkの誤差信号を重みwkjで逆向きに集めて求める" style="max-width:100%;height:auto">
+                <defs>
+                  <marker id="arrow-fwd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#7f9cc3"/>
+                  </marker>
+                  <marker id="arrow-back" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+                  </marker>
+                </defs>
+                <g stroke="#7f9cc3" stroke-width="1.5" marker-end="url(#arrow-fwd)">
+                  <line x1="108" y1="115" x2="258" y2="115"/>
+                  <line x1="297" y1="109" x2="449" y2="53"/>
+                  <line x1="298" y1="115" x2="448" y2="115"/>
+                  <line x1="297" y1="121" x2="449" y2="177"/>
+                </g>
+                <g stroke="#c0392b" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrow-back)">
+                  <line x1="455" y1="62" x2="303" y2="118"/>
+                  <line x1="450" y1="125" x2="302" y2="125"/>
+                  <line x1="449" y1="187" x2="297" y2="131"/>
+                </g>
+                <g fill="#fff" stroke="#2256a3" stroke-width="2">
+                  <circle cx="90" cy="115" r="18"/>
+                  <circle cx="280" cy="115" r="18"/>
+                  <circle cx="470" cy="45" r="18"/>
+                  <circle cx="470" cy="115" r="18"/>
+                  <circle cx="470" cy="185" r="18"/>
+                </g>
+                <g font-size="14" text-anchor="middle" fill="#172338" font-style="italic">
+                  <text x="90" y="120">z<tspan font-size="10" dy="3">i</tspan></text>
+                  <text x="280" y="120">δ<tspan font-size="10" dy="3">j</tspan></text>
+                  <text x="470" y="50">δ<tspan font-size="10" dy="3">1</tspan></text>
+                  <text x="470" y="120">δ<tspan font-size="10" dy="3">k</tspan></text>
+                  <text x="470" y="190">δ<tspan font-size="10" dy="3">K</tspan></text>
+                </g>
+                <g font-size="13" text-anchor="middle" fill="#50627b">
+                  <text x="90" y="20">送り元 i</text>
+                  <text x="280" y="20">ユニット j</text>
+                  <text x="470" y="20">結合先 k</text>
+                  <text x="180" y="105" font-style="italic">w<tspan font-size="10" dy="3">ji</tspan></text>
+                  <text x="365" y="70" font-style="italic">w<tspan font-size="10" dy="3">kj</tspan></text>
+                </g>
+                <g font-size="12" fill="#50627b">
+                  <line x1="110" y1="226" x2="145" y2="226" stroke="#7f9cc3" stroke-width="1.5" marker-end="url(#arrow-fwd)"/>
+                  <text x="152" y="230">順伝播（a, z を計算）</text>
+                  <line x1="330" y1="226" x2="365" y2="226" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrow-back)"/>
+                  <text x="372" y="230">逆伝播（δ を集める）</text>
+                </g>
+              </svg>
+              <figcaption class="meta">図5.7に対応。\(\delta_j\) は結合先の \(\delta_k\) を重み \(w_{kj}\) で逆向きに集めて求める。</figcaption>
+            </figure>
+            <ul>
+              <li>\(a_j\) は結合先の \(a_k\) を通してだけ \(E_n\) に効く → 連鎖律で<strong>逆伝播公式</strong>
+                <div class="equation">\[\boxed{\delta_j=h'(a_j)\sum_k w_{kj}\delta_k}\tag{5.56}\]</div>
+                <ul>
+                  <li>上位の \(\delta_k\) を同じ重み \(w_{kj}\) で逆向きに集め、\(h'(a_j)\) を掛ける</li>
+                  <li>行列で書くと、順伝播は \(W\boldsymbol z\)、逆伝播は \(W^\top\boldsymbol\delta\)</li>
+                  <li>出力側から繰り返せば、構造によらず全ユニットの \(\delta\) が求まる</li>
+                </ul>
+              </li>
+            </ul>
+            <details class="level-1">
+              <summary>逆伝播公式の導出</summary>
+              <div class="detail-body">
+                <div class="step"><strong>\(a_j\) は結合先の \(a_k\) を通してだけ \(E_n\) に効く</strong>\[\delta_j=\frac{\partial E_n}{\partial a_j}=\sum_k\frac{\partial E_n}{\partial a_k}\frac{\partial a_k}{\partial a_j}\tag{5.55}\]</div>
+                <div class="step"><strong>\(a_k=\sum_jw_{kj}z_j\)、\(z_j=h(a_j)\) より \(\partial a_k/\partial a_j=w_{kj}h'(a_j)\)</strong>\[\delta_j=\sum_k\delta_k\,w_{kj}\,h'(a_j)=h'(a_j)\sum_kw_{kj}\delta_k\]</div>
               </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(w_{ji}\) を含むのは \(y_{nj}\) だけ。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\frac{\partial E_n}{\partial w_{ji}}=(y_{nj}-t_{nj})\,x_{ni}\]</div>
-                  <p>結合の<strong>出力側の誤差信号 × 入力側の変数</strong>という局所的な形。多層でもこの形が保たれる。</p>
-                  <details class="level-1">
-                    <summary>▶ 一般のネットワークの順伝播</summary>
-                    <div class="detail-body">
-                      <div class="step">\[a_j=\sum_i w_{ji}z_i,\qquad z_j=h(a_j)\]</div>
-                      <p>\(z_i\) は \(j\) へ結合するユニット（または入力）の出力。入力から順に計算する（順伝播）。以下、添字 \(n\) を省略。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>重みの勾配は「誤差信号 × 入力」</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(a_j=\sum_i w_{ji}z_i\)、\(\delta_j\equiv\partial E_n/\partial a_j\) のとき \(\partial E_n/\partial w_{ji}=\;\square\)。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(E_n\) は \(a_j\) を通してのみ \(w_{ji}\) に依存する。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\boxed{\frac{\partial E_n}{\partial w_{ji}}=\frac{\partial E_n}{\partial a_j}\frac{\partial a_j}{\partial w_{ji}}=\delta_j z_i}\]</div>
-                  <p>\(z_i\) は結合の入力側の出力（第1層では \(x_i\)）、\(\delta_j\) は出力側の誤差信号。バイアスは \(z_0=1\) より \(\partial E_n/\partial w_{j0}=\delta_j\)。</p>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>出力層の \(\delta\)</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(E_n=\frac12\sum_k(y_k-t_k)^2\)、\(y_k=a_k\) のとき \(\delta_k=\;\square\)。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(\partial E_n/\partial y_k\) に \(\partial y_k/\partial a_k=1\) を掛ける。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\boxed{\delta_k=y_k-t_k}\]</div>
-                  <details class="level-1">
-                    <summary>▶ ソフトマックス＋交差エントロピーでも同じ</summary>
-                    <div class="detail-body">
-                      <div class="step"><strong>\(\sum_l t_l=1\) を使って書き換え</strong>\[E_n=-\sum_l t_l\ln y_l=-\sum_l t_la_l+\ln\sum_re^{a_r}\]</div>
-                      <div class="step"><strong>\(a_k\) で微分</strong>\[\frac{\partial E_n}{\partial a_k}=-t_k+\frac{e^{a_k}}{\sum_re^{a_r}}=y_k-t_k\]</div>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>逆伝播公式</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(z_j=h(a_j)\)、\(j\) から結合する上位層 \(a_k=\sum_j w_{kj}z_j\)。\(\delta_j\) を \(\delta_k\) で書け。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(a_j\) は \(j\) から出るすべての枝 \(k\) を通じて \(E_n\) に影響する。経路ごとの寄与を足す。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\boxed{\delta_j=h'(a_j)\sum_k w_{kj}\delta_k}\]</div>
-                  <p>上位層の \(\delta_k\) を同じ重みで逆向きに集め、\(h'(a_j)\) を掛ける。出力層から再帰的に適用すれば、任意の層数で全ユニットの \(\delta\) が求まる。</p>
-                  <details class="level-1">
-                    <summary>▶ 導出</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\delta_j=\sum_k\frac{\partial E_n}{\partial a_k}\frac{\partial a_k}{\partial z_j}\frac{\partial z_j}{\partial a_j}=\sum_k\delta_k\,w_{kj}\,h'(a_j)\]</div>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <article class="card">
-              <h4>アルゴリズム</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>1データ点 \(\boldsymbol x_n\) の勾配を得る4手順を書け。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>出力の誤差信号 → 隠れ層へ戻す → 重みの勾配。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <ol>
-                    <li>順伝播し、全ユニットの \(a_j,\,z_j\) を保存。</li>
-                    <li>出力層の \(\delta_k=y_k-t_k\)。</li>
-                    <li>\(\delta_j=h'(a_j)\sum_k w_{kj}\delta_k\) で全隠れユニットの \(\delta_j\)。</li>
-                    <li>\(\partial E_n/\partial w_{ji}=\delta_j z_i\)。バッチなら全データで和を取る。</li>
-                  </ol>
-                  <details class="level-1">
-                    <summary>▶ 擬似コード（行列形式）</summary>
-                    <div class="detail-body">
-                      <pre style="white-space:pre-wrap;line-height:1.6">for 各データ点 (x, t):
+            </details>
+            <h4>アルゴリズム</h4>
+            <ol>
+              <li>順伝播：全ユニットの \(a_j,\,z_j\) を保存</li>
+              <li>出力層：\(\delta_k=y_k-t_k\)</li>
+              <li>逆伝播：\(\delta_j=h'(a_j)\sum_kw_{kj}\delta_k\)</li>
+              <li>勾配：\(\partial E_n/\partial w_{ji}=\delta_jz_i\)（バッチ法なら全データで和<span class="eqno">(5.57)</span>）</li>
+            </ol>
+            <details class="level-1">
+              <summary>擬似コード（層ごとの行列形式）</summary>
+              <div class="detail-body">
+                <pre style="white-space:pre-wrap;line-height:1.6">for 各データ点 (x, t):
     順伝播: 各層の a, z を保存
     δ = y − t
     for 層 in 出力側 → 入力側:
-        dE/dW = δ (直前層の z)^T
+        dE/dW = δ (直前の層の z)^T
         δ ← h'(a) ⊙ (W^T δ)
-勾配を合計（または平均）して更新</pre>
-                      <p>各ユニットの \(\delta\) はそこに入る全重みで共通、上位層の \(\delta_k\) は下位層の全 \(\delta_j\) で共通に使われる。これが効率の源泉。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
+勾配を合計（または平均）して、最適化手法で更新</pre>
+              </div>
+            </details>
             <h3>5.3.2 簡単な例</h3>
-            <article class="card">
-              <h4>tanh 隠れ層・線形出力・二乗和誤差</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(h=\tanh\)、\(y_k=a_k\)、\(E_n=\frac12\sum_k(y_k-t_k)^2\)。(1) \(h'(a)\) を \(h(a)\) で、(2) \(\delta_k\)、(3) \(\delta_j\)、(4) 両層の重みの勾配を書け。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>\(\tanh'=1-\tanh^2\)。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[h'(a)=1-h(a)^2,\qquad \delta_k=y_k-t_k,\qquad \delta_j=(1-z_j^2)\sum_{k=1}^{K}w_{kj}\delta_k\] \[
-  \frac{\partial E_n}{\partial w_{ji}^{(1)}}=\delta_j x_i,\qquad
-  \frac{\partial E_n}{\partial w_{kj}^{(2)}}=\delta_k z_j
-\]</div>
-                  <p>\(h'\) は保存した \(z_j\) から \(1-z_j^2\) で計算できる。</p>
-                  <details class="level-1">
-                    <summary>▶ \(\tanh\) の導関数</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\frac{d}{da}\frac{e^a-e^{-a}}{e^a+e^{-a}}=\frac{(e^a+e^{-a})^2-(e^a-e^{-a})^2}{(e^a+e^{-a})^2}=1-\tanh^2(a)\]</div>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
+            <ul>
+              <li><strong>構成：</strong>2層、隠れユニット \(\tanh\)、出力は線形、二乗和誤差</li>
+              <li><strong>\(\tanh\) の性質：</strong>\(h'(a)=1-h(a)^2\)<span class="eqno">(5.60)</span> → 保存した \(z_j\) だけで計算できる</li>
+            </ul>
+            <div class="step"><strong>順伝播</strong>\[a_j=\sum_{i=0}^{D}w_{ji}^{(1)}x_i,\qquad z_j=\tanh(a_j),\qquad y_k=\sum_{j=0}^{M}w_{kj}^{(2)}z_j\tag{5.62–5.64}\]</div>
+            <div class="step"><strong>出力層の \(\delta\)</strong>\[\delta_k=y_k-t_k\tag{5.65}\]</div>
+            <div class="step"><strong>隠れ層の \(\delta\)</strong>\[\delta_j=(1-z_j^2)\sum_{k=1}^{K}w_{kj}\delta_k\tag{5.66}\]</div>
+            <div class="step"><strong>勾配</strong>\[\frac{\partial E_n}{\partial w_{ji}^{(1)}}=\delta_jx_i,\qquad \frac{\partial E_n}{\partial w_{kj}^{(2)}}=\delta_kz_j\tag{5.67}\]</div>
             <h3>5.3.3 逆伝播の効率</h3>
-            <article class="card">
-              <h4>計算量と勾配チェック</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>① 逆伝播による1点の勾配計算は \(O(\square)\)。② 中心差分 \(\dfrac{E_n(w_{ji}+\epsilon)-E_n(w_{ji}-\epsilon)}{2\epsilon}\) の誤差は \(O(\square)\)。③ 数値微分で全勾配を求めるコストは \(O(\square)\)。</p>
+            <ul>
+              <li><strong>逆伝播：</strong>順伝播 \(O(W)\)、逆伝播も同程度 → 全勾配 \(O(W)\)</li>
+              <li><strong>数値微分</strong>（重みを1つずつ動かして差分）
+                <ul>
+                  <li>前進差分：誤差 \(O(\epsilon)\)<span class="eqno">(5.68)</span></li>
+                  <li>中心差分 \(\frac{E_n(w+\epsilon)-E_n(w-\epsilon)}{2\epsilon}\)：誤差 \(O(\epsilon^2)\)<span class="eqno">(5.69)</span>（\(\epsilon\) が小さすぎると丸め誤差）</li>
+                  <li>重み \(W\) 個 × 順伝播 \(O(W)\) → \(O(W^2)\)</li>
+                </ul>
+              </li>
+              <li><strong>結論：</strong>学習は逆伝播、数値微分は実装の検証（勾配チェック）用</li>
+            </ul>
+            <details class="level-1">
+              <summary>中心差分の誤差が \(O(\epsilon^2)\) になる理由</summary>
+              <div class="detail-body">
+                <div class="step"><strong>\(E(w\pm\epsilon)\) をテイラー展開して引く</strong>\[\frac{E(w+\epsilon)-E(w-\epsilon)}{2\epsilon}=E'(w)+\frac{\epsilon^2}{6}E'''(w)+\cdots\]</div>
+                <p>偶数次の項が打ち消し合う。前進差分では \(\frac{\epsilon}{2}E''(w)\) が残る。</p>
               </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>② \(E_n(w\pm\epsilon)\) をテイラー展開して引く。③ 重み1つにつき順伝播 \(O(W)\) が2回。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[\text{①}\;O(W)\qquad \text{②}\;O(\epsilon^2)\qquad \text{③}\;O(W^2)\]</div>
-                  <ul>
-                    <li><strong>逆伝播：</strong>重み数がユニット数より十分多ければ、順伝播の主要コストは \(W\) 回の積和で、逆伝播も同程度。</li>
-                    <li><strong>数値微分：</strong>学習には遅すぎるが、実装が単純で信頼できるので、逆伝播の実装の検証（勾配チェック）に使う。</li>
-                  </ul>
-                  <details class="level-1">
-                    <summary>▶ 中心差分の誤差</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\frac{E(w+\epsilon)-E(w-\epsilon)}{2\epsilon}=E'(w)+\frac{\epsilon^2}{6}E'''(w)+\cdots\]</div>
-                      <p>前進差分は \(\frac{\epsilon}{2}E''\) が残り \(O(\epsilon)\)。\(\epsilon\) が小さすぎると丸め誤差が支配的になるので、大きめの \(\epsilon\) で精度が出る中心差分が有利。</p>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
+            </details>
             <h3>5.3.4 ヤコビ行列</h3>
-            <article class="card">
-              <h4>入力に対する出力の感度</h4>
-              <div class="challenge">
-                <strong>問題</strong>
-                <p>\(J_{ki}=\partial y_k/\partial x_i=\sum_j\;\square\cdot\dfrac{\partial y_k}{\partial a_j}\)（\(a_j=\sum_i w_{ji}x_i\)）。\(\partial y_k/\partial a_j\) の逆伝播公式も作れ。</p>
-              </div>
-              <textarea aria-label="メモ" class="scratch" placeholder="メモ" rows="3"></textarea>
-              <details class="hint">
-                <summary>ヒント</summary>
-                <p>逆伝播公式の導出で \(E_n\) を \(y_k\) に置き換える。</p>
-              </details>
-              <details class="answer">
-                <summary>解答</summary>
-                <div class="detail-body">
-                  <div class="equation">\[
-  J_{ki}=\sum_j w_{ji}\frac{\partial y_k}{\partial a_j},\qquad
-  \frac{\partial y_k}{\partial a_j}=h'(a_j)\sum_l w_{lj}\frac{\partial y_k}{\partial a_l}
-\]</div>
-                  <p>出力層から \(\partial y_k/\partial a\) を逆伝播し、最後に入力側の重みを掛けて足す。\(J\) は入力 \(\boldsymbol x\) ごとに異なる。</p>
-                  <details class="level-1">
-                    <summary>▶ 出力層での初期値と用途</summary>
-                    <div class="detail-body">
-                      <div class="step">\[\text{線形：}\ \frac{\partial y_k}{\partial a_l}=\delta_{kl},\qquad \text{シグモイド：}\ \delta_{kl}\,\sigma'(a_l),\qquad \text{ソフトマックス：}\ \delta_{kl}y_k-y_ky_l\]</div>
-                      <p>（\(\delta_{kl}\) はクロネッカーのデルタ）</p>
-                      <ul>
-                        <li><strong>モジュール結合：</strong>大きなシステムの部品として使うとき、誤差を上流へ伝える：\(\frac{\partial E}{\partial w}=\sum_{k,j}\frac{\partial E}{\partial y_k}\frac{\partial y_k}{\partial z_j}\frac{\partial z_j}{\partial w}\)。</li>
-                        <li><strong>入力誤差の伝播：</strong>\(\Delta y_k\simeq\sum_i J_{ki}\Delta x_i\)。</li>
-                      </ul>
-                    </div>
-                  </details>
-                </div>
-              </details>
-            </article>
-            <div class="quiz"><strong>確認：</strong>① 逆伝播公式で \(h'(a_j)\) が \(\sum\) の外に出る理由は？　② 数値微分を学習に使わないのに必要とする理由は？</div>
+            <ul>
+              <li><strong>目的：</strong>逆伝播が他の微分にも使えることを示す。例：\(J_{ki}=\partial y_k/\partial x_i\)<span class="eqno">(5.70)</span></li>
+              <li><strong>用途</strong>
+                <ul>
+                  <li>モジュール構成のシステム（図5.8）：前段のパラメータまで誤差を伝える
+                    <div class="equation">\[\frac{\partial E}{\partial w}=\sum_{k,j}\frac{\partial E}{\partial y_k}\frac{\partial y_k}{\partial z_j}\frac{\partial z_j}{\partial w}\tag{5.71}\]</div>
+                  </li>
+                  <li>入力誤差の影響：\(\Delta y_k\simeq\sum_iJ_{ki}\Delta x_i\)<span class="eqno">(5.72)</span></li>
+                </ul>
+              </li>
+              <li><strong>計算：</strong>逆伝播公式の \(E_n\) を \(y_k\) に置き換える
+                <div class="equation">\[J_{ki}=\sum_j w_{ji}\frac{\partial y_k}{\partial a_j},\qquad \frac{\partial y_k}{\partial a_j}=h'(a_j)\sum_l w_{lj}\frac{\partial y_k}{\partial a_l}\tag{5.73, 5.74}\]</div>
+                <ul>
+                  <li>出力層の初期値：シグモイドなら \(\delta_{kl}\,\sigma'(a_l)\)<span class="eqno">(5.75)</span>、ソフトマックスなら \(\delta_{kl}y_k-y_ky_l\)<span class="eqno">(5.76)</span>（\(\delta_{kl}\)：クロネッカーのデルタ）</li>
+                </ul>
+              </li>
+              <li><strong>注意：</strong>\(J\) は入力 \(\boldsymbol x\) ごとに異なる → 入力ごとに再計算</li>
+            </ul>
           </section>
-          <!-- ===================== 演習 ===================== -->
-          <section id="practice">
-            <h2>演習：数値で逆伝播</h2>
-            <p>入力1・隠れ1・線形出力1。\(\sigma(a)=1/(1+e^{-a})\)、\(E=\frac12(y-t)^2\)。</p>
+          <!-- ===================== 計算例 ===================== -->
+          <section id="example">
+            <h2>計算例：数値で逆伝播を追う</h2>
+            <ul>
+              <li><strong>目的：</strong>\(\delta\) の流れを最小のネットワークで確かめる</li>
+              <li><strong>設定：</strong>入力1・隠れユニット1（シグモイド）・線形出力1、\(E=\frac12(y-t)^2\)
+                <ul>
+                  <li>添字 \(h\)：隠れユニット、\(o\)：出力。\(b_1,b_2\)：バイアス</li>
+                </ul>
+              </li>
+            </ul>
             <div class="equation">\[
   x=1,\quad w_1=0,\quad b_1=0,\quad w_2=2,\quad b_2=0,\quad t=0
 \] \[
   a_h=w_1x+b_1,\quad z_h=\sigma(a_h),\quad y=w_2z_h+b_2
 \]</div>
-            <p>\(y\)、\(E\)、\(\partial E/\partial w_2\)、\(\partial E/\partial w_1\) を求めよ。</p>
-            <details class="level-1">
-              <summary>▶ 解答</summary>
-              <div class="detail-body">
-                <div class="step"><strong>順伝播</strong>\[a_h=0,\quad z_h=\tfrac12,\quad y=1,\quad E=\tfrac12\]</div>
-                <div class="step"><strong>出力層</strong>\[\delta_o=y-t=1,\qquad \frac{\partial E}{\partial w_2}=\delta_oz_h=\tfrac12\]</div>
-                <div class="step"><strong>隠れ層</strong>\[\delta_h=\sigma'(0)\,w_2\delta_o=\tfrac14\cdot2\cdot1=\tfrac12,\qquad\frac{\partial E}{\partial w_1}=\delta_hx=\tfrac12\]</div>
-                <p>バイアス：\(\partial E/\partial b_2=\delta_o=1\)、\(\partial E/\partial b_1=\delta_h=\tfrac12\)。</p>
-              </div>
-            </details>
-            <h3>勾配チェック</h3>
-            <p>中心差分（\(\epsilon=0.01\)）で \(\partial E/\partial w_2\)、\(\partial E/\partial w_1\) を求め、\(\tfrac12\) と比べよ。</p>
-            <details class="level-1">
-              <summary>▶ 解答</summary>
-              <div class="detail-body">
-                <div class="step"><strong>\(w_2\)：\(E=\tfrac12(w_2/2)^2\)</strong>\[\frac{E(2.01)-E(1.99)}{0.02}=\frac{0.5050125-0.4950125}{0.02}=0.5000\]</div>
-                <div class="step"><strong>\(w_1\)：\(E=2\sigma(w_1)^2\)</strong>\[\sigma(\pm0.01)\approx0.5025,\;0.4975\;\Rightarrow\;\frac{0.505012-0.495012}{0.02}\approx0.5000\]</div>
-                <p>\(w_2\) は \(E\) が2次式なので厳密に一致する。</p>
-              </div>
-            </details>
+            <div class="step"><strong>① 順伝播</strong>\[a_h=0,\quad z_h=\sigma(0)=\tfrac12,\quad y=2\cdot\tfrac12=1,\quad E=\tfrac12(1-0)^2=\tfrac12\]</div>
+            <div class="step"><strong>② 出力層：\(\delta_o=y-t\)</strong>\[\delta_o=1,\qquad \frac{\partial E}{\partial w_2}=\delta_oz_h=\tfrac12,\qquad \frac{\partial E}{\partial b_2}=\delta_o=1\]</div>
+            <div class="step"><strong>③ 隠れ層：\(\delta_h=\sigma'(a_h)\,w_2\,\delta_o\)、\(\sigma'(0)=\tfrac14\)</strong>\[\delta_h=\tfrac14\cdot2\cdot1=\tfrac12,\qquad \frac{\partial E}{\partial w_1}=\delta_hx=\tfrac12,\qquad \frac{\partial E}{\partial b_1}=\delta_h=\tfrac12\]</div>
+            <ul>
+              <li>\(\delta_o=1\) が \(w_2=2\) を通って戻り、\(\sigma'(0)=\tfrac14\) が掛かって \(\delta_h=\tfrac12\)</li>
+              <li>勾配 ＝ 重みの両端の \(\delta\) と \(z\) の積</li>
+            </ul>
+            <h3>勾配チェック（中心差分、\(\epsilon=0.01\)）</h3>
+            <div class="step"><strong>\(w_2\)：\(E=\tfrac12(w_2/2)^2\)</strong>\[\frac{E(2.01)-E(1.99)}{0.02}=\frac{0.5050125-0.4950125}{0.02}=0.5000\]</div>
+            <div class="step"><strong>\(w_1\)：\(E=2\sigma(w_1)^2\)</strong>\[\sigma(\pm0.01)\approx0.5025,\;0.4975\;\Rightarrow\;\frac{0.505012-0.495012}{0.02}\approx0.5000\]</div>
+            <ul>
+              <li>どちらも逆伝播の \(\tfrac12\) と一致（\(w_2\) は \(E\) が2次式なので厳密に一致）</li>
+            </ul>
           </section>
           <!-- ===================== まとめ ===================== -->
           <section id="finish">
             <h2>まとめ</h2>
-            <ol>
-              <li><strong>5.1：</strong>線形変換と可微分な非線形活性化の合成で関数を作り、基底そのものを学習する。2層でも万能近似が可能（存在定理）。重み空間には \(M!2^M\) 重の対称性がある。</li>
-              <li><strong>5.2：</strong>負の対数尤度から二乗和誤差・交差エントロピーが導かれ、正準連結関数との組で \(\partial E_n/\partial a_k=y_k-t_k\) に揃う。誤差曲面は非凸で、極小近傍はヘッセ行列の二次形式で近似できる。勾配を使うと計算量は \(O(W^3)\to O(W^2)\)。</li>
-              <li><strong>5.3：</strong>\(\delta\) を出力側から再利用し、\(\partial E_n/\partial w_{ji}=\delta_jz_i\) を \(O(W)\) で計算する。数値微分は検証用。同じ仕組みでヤコビ行列も計算できる。</li>
-            </ol>
-            <div class="callout">逆伝播は<strong>勾配を計算する</strong>手法。重みの更新は勾配降下法などの最適化が行う。</div>
+            <div class="tbl-wrap">
+              <table class="tbl summary">
+                <thead>
+                  <tr>
+                    <th>節</th>
+                    <th>問い</th>
+                    <th>答え</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>5.1</td>
+                    <td>どんな関数を使うか</td>
+                    <td>
+                      <ul>
+                        <li>線形変換 ＋ 可微分な非線形変換の合成（基底を学習）</li>
+                        <li>2層で万能近似（存在定理）</li>
+                        <li>重みに \(M!\,2^M\) 重の対称性</li>
+                      </ul>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>5.2</td>
+                    <td>何を最小化し、どう探すか</td>
+                    <td>
+                      <ul>
+                        <li>負の対数尤度。\(\partial E_n/\partial a_k=y_k-t_k\)</li>
+                        <li>非凸 → 勾配による反復法（\(O(W^3)\to O(W^2)\)）</li>
+                        <li>大規模データではSGD</li>
+                      </ul>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>5.3</td>
+                    <td>勾配をどう計算するか</td>
+                    <td>
+                      <ul>
+                        <li>\(\delta\) を逆伝播し、\(\partial E_n/\partial w_{ji}=\delta_jz_i\)</li>
+                        <li>全勾配 \(O(W)\)。数値微分（\(O(W^2)\)）は検証用</li>
+                        <li>ヤコビ行列も同じ仕組みで計算</li>
+                      </ul>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">逆伝播は<strong>勾配を計算する</strong>手法。重みの更新は最適化手法が行う。</div>
+            <ul>
+              <li><strong>この先：</strong>ヘッセ行列（5.4）、正則化（5.5）、混合密度ネットワーク（5.6）、ベイズNN（5.7）</li>
+            </ul>
             <p class="meta">参照：C. M. Bishop, <i>Pattern Recognition and Machine Learning</i> (2006), §5.1–5.3. <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf" rel="noopener" target="_blank">書籍PDF</a></p>
           </section>
         </div>
